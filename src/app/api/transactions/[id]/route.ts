@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db/prisma';
+import { db } from '@/lib/db/supabase';
 import { z } from 'zod';
 
 const updateTransactionSchema = z.object({
@@ -24,21 +24,18 @@ export async function GET(
 
     const { id } = await params;
 
-    const transaction = await prisma.transaction.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-      include: {
-        category: true,
-      },
-    });
+    const transaction = await db.getTransaction(id, session.user.id);
 
     if (!transaction) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ data: transaction });
+    return NextResponse.json({
+      data: {
+        ...transaction,
+        amount: parseFloat(transaction.amount.toString()),
+      },
+    });
   } catch (error) {
     console.error('Error fetching transaction:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -60,12 +57,7 @@ export async function PATCH(
     const validatedData = updateTransactionSchema.parse(body);
 
     // Verify transaction belongs to user
-    const existingTransaction = await prisma.transaction.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    });
+    const existingTransaction = await db.getTransaction(id, session.user.id);
 
     if (!existingTransaction) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
@@ -73,12 +65,7 @@ export async function PATCH(
 
     // If categoryId is provided, verify it belongs to user
     if (validatedData.categoryId) {
-      const category = await prisma.category.findFirst({
-        where: {
-          id: validatedData.categoryId,
-          userId: session.user.id,
-        },
-      });
+      const category = await db.getCategory(validatedData.categoryId, session.user.id);
 
       if (!category) {
         return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
@@ -93,15 +80,14 @@ export async function PATCH(
     if (validatedData.time) updateData.time = validatedData.time;
     if (validatedData.tags) updateData.tags = validatedData.tags;
 
-    const transaction = await prisma.transaction.update({
-      where: { id },
-      data: updateData,
-      include: {
-        category: true,
+    const transaction = await db.updateTransaction(id, updateData);
+
+    return NextResponse.json({
+      data: {
+        ...transaction,
+        amount: parseFloat(transaction.amount.toString()),
       },
     });
-
-    return NextResponse.json({ data: transaction });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 });
@@ -124,20 +110,13 @@ export async function DELETE(
     const { id } = await params;
 
     // Verify transaction belongs to user
-    const existingTransaction = await prisma.transaction.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    });
+    const existingTransaction = await db.getTransaction(id, session.user.id);
 
     if (!existingTransaction) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
 
-    await prisma.transaction.delete({
-      where: { id },
-    });
+    await db.deleteTransaction(id);
 
     return NextResponse.json({ message: 'Transaction deleted successfully' });
   } catch (error) {

@@ -1,6 +1,6 @@
 import { unstable_noStore as noStore } from 'next/cache';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db/prisma';
+import { db } from '@/lib/db/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowUpCircle, ArrowDownCircle, Wallet } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
@@ -30,10 +30,7 @@ export async function SummaryCards() {
   if (!session?.user?.id) return null;
 
   // Get user preferences
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { currency: true, locale: true },
-  });
+  const user = await db.getUser(session.user.id);
 
   const currency = user?.currency || 'BDT';
   // Use currency's locale for number formatting, not user's language preference
@@ -44,50 +41,33 @@ export async function SummaryCards() {
   const monthEnd = endOfMonth(now);
 
   // Get transactions for current month
-  const monthTransactions = await prisma.transaction.findMany({
-    where: {
-      userId: session.user.id,
-      date: {
-        gte: monthStart,
-        lte: monthEnd,
-      },
-    },
-    select: {
-      amount: true,
-      type: true,
-    },
+  const monthTransactions = await db.getTransactions(session.user.id, {
+    startDate: monthStart,
+    endDate: monthEnd,
   });
 
   // Get all transactions (total)
-  const allTransactions = await prisma.transaction.findMany({
-    where: {
-      userId: session.user.id,
-    },
-    select: {
-      amount: true,
-      type: true,
-    },
-  });
+  const allTransactions = await db.getTransactions(session.user.id);
 
   // Calculate this month's data
   const monthIncome = monthTransactions
     .filter((t) => t.type === 'INCOME')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+    .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
 
   const monthExpense = monthTransactions
     .filter((t) => t.type === 'EXPENSE')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+    .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
 
   const monthBalance = monthIncome - monthExpense;
 
   // Calculate total (all-time) data
   const totalIncome = allTransactions
     .filter((t) => t.type === 'INCOME')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+    .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
 
   const totalExpense = allTransactions
     .filter((t) => t.type === 'EXPENSE')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+    .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
 
   const totalBalance = totalIncome - totalExpense;
 

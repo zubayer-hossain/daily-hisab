@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CategorySelect } from './category-select';
 import { useToast } from '@/hooks/use-toast';
-import { TransactionType } from '@prisma/client';
+import { TransactionType } from '@/types';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 

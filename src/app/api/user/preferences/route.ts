@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db/prisma';
+import { db } from '@/lib/db/supabase';
 import { z } from 'zod';
 
 const updatePreferencesSchema = z.object({
@@ -24,13 +24,15 @@ export async function PATCH(request: NextRequest) {
     if (validatedData.theme) updateData.theme = validatedData.theme;
     if (validatedData.currency) updateData.currency = validatedData.currency;
 
-    const user = await prisma.user.update({
-      where: { id: session.user.id },
-      data: updateData,
-      select: { locale: true, theme: true, currency: true },
-    });
+    const user = await db.updateUser(session.user.id, updateData);
 
-    return NextResponse.json({ data: user });
+    return NextResponse.json({
+      data: {
+        locale: user.locale,
+        theme: user.theme,
+        currency: user.currency,
+      },
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 });

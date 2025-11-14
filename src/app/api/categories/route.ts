@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db/prisma';
+import { db } from '@/lib/db/supabase';
 import { z } from 'zod';
 
 const createCategorySchema = z.object({
@@ -15,14 +15,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const categories = await prisma.category.findMany({
-      where: {
-        userId: session.user.id,
-      },
-      orderBy: {
-        order: 'asc',
-      },
-    });
+    const categories = await db.getCategories(session.user.id);
 
     return NextResponse.json({ data: categories });
   } catch (error) {
@@ -42,12 +35,8 @@ export async function POST(request: NextRequest) {
     const validatedData = createCategorySchema.parse(body);
 
     // Check if category with same name already exists
-    const existing = await prisma.category.findFirst({
-      where: {
-        userId: session.user.id,
-        name: validatedData.name,
-      },
-    });
+    const categories = await db.getCategories(session.user.id);
+    const existing = categories.find((cat) => cat.name === validatedData.name);
 
     if (existing) {
       return NextResponse.json(
@@ -57,26 +46,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the max order
-    const maxOrder = await prisma.category.findFirst({
-      where: {
-        userId: session.user.id,
-      },
-      orderBy: {
-        order: 'desc',
-      },
-      select: {
-        order: true,
-      },
-    });
+    const maxOrder = await db.getMaxCategoryOrder(session.user.id);
 
-    const category = await prisma.category.create({
-      data: {
-        userId: session.user.id,
-        name: validatedData.name,
-        icon: validatedData.icon,
-        order: (maxOrder?.order || 0) + 1,
-        isDefault: false,
-      },
+    const category = await db.createCategory({
+      userId: session.user.id,
+      name: validatedData.name,
+      icon: validatedData.icon,
+      order: maxOrder + 1,
+      isDefault: false,
     });
 
     return NextResponse.json({ data: category }, { status: 201 });

@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/db/prisma';
+import { db } from '@/lib/db/supabase';
 import { SettingsForm } from '@/components/settings/settings-form';
 import { getTranslations } from 'next-intl/server';
 
@@ -13,14 +13,7 @@ export default async function SettingsPage() {
   }
 
   // Fetch full user data including preferences
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      locale: true,
-      currency: true,
-      theme: true,
-    },
-  });
+  const user = await db.getUser(session.user.id);
 
   if (!user) {
     redirect('/login');
@@ -35,7 +28,11 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <SettingsForm user={user} />
+      <SettingsForm user={{
+        locale: user.locale,
+        currency: user.currency,
+        theme: user.theme,
+      }} />
     </div>
   );
 }

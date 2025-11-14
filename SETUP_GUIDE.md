@@ -1,13 +1,13 @@
 # Setup Guide - Daily Hisab App 🚀
 
-This guide will help you set up the Daily Hisab application from scratch.
+This guide will help you set up the Daily Hisab application from scratch using Supabase.
 
 ## Prerequisites Checklist
 
 Before starting, make sure you have:
 
 - [ ] Node.js 20+ installed ([Download](https://nodejs.org/))
-- [ ] PostgreSQL installed locally or access to a cloud database
+- [ ] Supabase account (free tier available at [supabase.com](https://supabase.com))
 - [ ] Google Account for OAuth setup
 - [ ] Git installed
 
@@ -21,41 +21,36 @@ npm install
 
 This will install all required packages including:
 - Next.js, React, TypeScript
-- Prisma, PostgreSQL client
+- Supabase client libraries
 - NextAuth.js for authentication
 - UI libraries (Tailwind, shadcn/ui)
 - Testing tools (Vitest, Playwright)
 
-### 2. Database Setup
+### 2. Supabase Database Setup
 
-#### Option A: Local PostgreSQL
+1. **Create a Supabase Project**
+   - Go to [supabase.com](https://supabase.com)
+   - Sign up or log in
+   - Click "New Project"
+   - Fill in project details:
+     - Name: Daily Hisab
+     - Database Password: (choose a strong password)
+     - Region: Choose closest to you
+   - Click "Create new project"
+   - Wait 1-2 minutes for project to be ready
 
-1. Install PostgreSQL on your machine
-2. Create a new database:
-```sql
-CREATE DATABASE daily_hisab;
-```
+2. **Get Supabase Credentials**
+   - Go to **Settings → API**
+   - Copy **Project URL** → This is your `NEXT_PUBLIC_SUPABASE_URL`
+   - Copy **anon/public key** → This is your `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-3. Update `.env` with your connection string:
-```env
-DATABASE_URL="postgresql://username:password@localhost:5432/daily_hisab?schema=public"
-```
-
-#### Option B: Cloud Database (Recommended)
-
-Use one of these free options:
-
-**Supabase** (Recommended)
-1. Go to [supabase.com](https://supabase.com)
-2. Create a new project
-3. Copy the connection string from Settings → Database
-4. Update `.env` with the connection string
-
-**Neon** 
-1. Go to [neon.tech](https://neon.tech)
-2. Create a new project
-3. Copy the connection string
-4. Update `.env`
+3. **Get Database Connection String**
+   - Go to **Settings → Database**
+   - Scroll to **Connection string** section
+   - Click **URI** tab
+   - Select **Direct connection** (port 6543)
+   - Copy the connection string → This is your `DATABASE_URL`
+   - **Important:** Replace `[YOUR-PASSWORD]` with your actual database password
 
 ### 3. Google OAuth Setup
 
@@ -93,12 +88,6 @@ Use one of these free options:
    - Click Create
    - **Copy the Client ID and Client Secret**
 
-6. **Update .env file**
-   ```env
-   GOOGLE_CLIENT_ID="your-client-id-here.apps.googleusercontent.com"
-   GOOGLE_CLIENT_SECRET="your-client-secret-here"
-   ```
-
 ### 4. Generate NextAuth Secret
 
 Run this command to generate a secure secret:
@@ -111,18 +100,17 @@ openssl rand -base64 32
 [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
 ```
 
-Add it to `.env`:
-```env
-NEXTAUTH_SECRET="your-generated-secret-here"
-```
-
 ### 5. Complete Environment Variables
 
-Your final `.env` file should look like this:
+Create a `.env` file in the project root with:
 
 ```env
-# Database
-DATABASE_URL="postgresql://user:password@host:5432/daily_hisab?schema=public"
+# Supabase Configuration (REQUIRED)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+
+# Database Connection (NOT NEEDED - using Supabase SQL migrations)
+# DATABASE_URL is not required - all database operations use Supabase client
 
 # NextAuth
 NEXTAUTH_URL="http://localhost:3000"
@@ -137,148 +125,87 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 NEXT_PUBLIC_DEFAULT_LOCALE="bn"
 ```
 
-### 6. Initialize Database
+### 6. Initialize Database Schema
 
-Push the Prisma schema to your database:
+Run the SQL migration in Supabase:
 
+**Option 1: Using Supabase Dashboard (Recommended)**
+1. Go to your Supabase project dashboard
+2. Navigate to **SQL Editor**
+3. Open `supabase/migrations/001_initial_schema.sql` from this project
+4. Copy the entire SQL content
+5. Paste it into the SQL Editor
+6. Click **Run** to execute the migration
+
+**Option 2: Using Supabase CLI**
 ```bash
-npm run db:push
+# Install Supabase CLI (if not installed)
+npm install -g supabase
+
+# Link to your project
+supabase link --project-ref your-project-ref
+
+# Push migrations
+supabase db push
 ```
 
-This will create all necessary tables.
+This will create all necessary tables in your Supabase database.
 
-### 7. Seed Database (Optional)
-
-Add default categories and test data:
-
-```bash
-npm run db:seed
-```
-
-### 8. Start Development Server
+### 7. Start Development Server
 
 ```bash
 npm run dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000) 🎉
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Verification Steps
+## 🎉 You're All Set!
 
-1. **Check if app loads**: Open http://localhost:3000
-2. **Test login**: Click "Sign in with Google"
-3. **Verify redirect**: You should be redirected to Google OAuth
-4. **Complete sign in**: Sign in with your Google account
-5. **Check dashboard**: You should see the dashboard with summary cards
+The application should now be running. You can:
 
-## Common Issues & Solutions
+1. Sign up with email/password or Google OAuth
+2. Create categories for income and expenses
+3. Add transactions
+4. View dashboard with summaries
+5. Change language (Bengali/English) and currency in settings
 
-### Issue: "Invalid client" error
+## 🔧 Troubleshooting
 
-**Solution**: 
-- Double-check your Google Client ID and Secret
-- Make sure the redirect URI is exactly: `http://localhost:3000/api/auth/callback/google`
-- Verify the OAuth consent screen is configured
+### Database Connection Issues
 
-### Issue: Database connection error
+If you get "prepared statement does not exist" errors:
+- Make sure you're using **Direct connection** (port 6543) in `DATABASE_URL`
+- Check that your Supabase project is active (not paused)
+- Verify your password is correct in the connection string
 
-**Solution**:
-- Verify PostgreSQL is running
-- Check the DATABASE_URL format
-- Ensure the database exists
-- Test connection with: `npx prisma studio`
-
-### Issue: "Module not found" errors
-
-**Solution**:
-```bash
-# Delete node_modules and reinstall
-rm -rf node_modules package-lock.json
-npm install
-```
-
-### Issue: Prisma client errors
-
-**Solution**:
-```bash
-# Regenerate Prisma client
-npx prisma generate
-```
-
-## Development Tools
-
-### Prisma Studio (Database GUI)
-
-View and edit your database visually:
+### Reset Development Environment
 
 ```bash
-npm run db:studio
+npm run reset
 ```
 
-Opens at [http://localhost:5555](http://localhost:5555)
+This will:
+- Stop all Node.js processes
+- Clear Next.js cache
 
-### Run Tests
+### Check Database Connection
 
 ```bash
-# Unit tests
-npm test
-
-# Watch mode
-npm test -- --watch
-
-# Coverage report
-npm run test:coverage
-
-# E2E tests
-npm run test:e2e
+npm run db:check
 ```
 
-## Next Steps
+This will verify your Supabase connection and provide helpful error messages if something is wrong.
 
-Once setup is complete:
+## 📚 Next Steps
 
-1. ✅ Create your first transaction
-2. ✅ Explore the dashboard
-3. ✅ Try different categories
-4. ✅ Test dark/light mode
-5. ✅ Check reports page (coming soon)
-6. ✅ Test on mobile device
+- Read the [README.md](README.md) for more information
+- Check out the project structure
+- Explore the API routes in `src/app/api/`
+- Customize the UI components in `src/components/`
 
-## Production Deployment
+## 🆘 Need Help?
 
-### Deploy to Vercel
-
-1. Push code to GitHub
-2. Import project at [vercel.com](https://vercel.com)
-3. Add environment variables (same as `.env`)
-4. Update `NEXTAUTH_URL` to your production URL
-5. Add production URL to Google OAuth redirect URIs
-6. Deploy!
-
-### Update Google OAuth for Production
-
-1. Go to Google Cloud Console
-2. Edit your OAuth Client ID
-3. Add production redirect URI:
-   ```
-   https://yourdomain.com/api/auth/callback/google
-   ```
-4. Update `.env` on Vercel with production URL
-
-## Getting Help
-
-- 📖 [Documentation](./README.md)
-- 🐛 [Report Issues](https://github.com/yourusername/daily-hisab-app/issues)
-- 💬 [Discussions](https://github.com/yourusername/daily-hisab-app/discussions)
-
-## Additional Resources
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Prisma Documentation](https://www.prisma.io/docs)
-- [NextAuth.js Documentation](https://next-auth.js.org)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-
----
-
-**Happy Tracking! 💰**
-
+- Check Supabase dashboard for database status
+- Verify all environment variables are set correctly
+- Make sure your Supabase project is not paused
+- Check the browser console for errors

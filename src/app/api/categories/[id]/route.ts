@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db/prisma';
+import { db } from '@/lib/db/supabase';
 import { z } from 'zod';
 
 const updateCategorySchema = z.object({
@@ -20,12 +20,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const category = await prisma.category.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    });
+    const category = await db.getCategory(id, session.user.id);
 
     if (!category) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
@@ -53,12 +48,7 @@ export async function PATCH(
     const validatedData = updateCategorySchema.parse(body);
 
     // Verify category belongs to user
-    const existingCategory = await prisma.category.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    });
+    const existingCategory = await db.getCategory(id, session.user.id);
 
     if (!existingCategory) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
@@ -72,10 +62,7 @@ export async function PATCH(
       );
     }
 
-    const category = await prisma.category.update({
-      where: { id },
-      data: validatedData,
-    });
+    const category = await db.updateCategory(id, validatedData);
 
     return NextResponse.json({ data: category });
   } catch (error) {
@@ -100,12 +87,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Verify category belongs to user
-    const existingCategory = await prisma.category.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    });
+    const existingCategory = await db.getCategory(id, session.user.id);
 
     if (!existingCategory) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
@@ -120,11 +102,7 @@ export async function DELETE(
     }
 
     // Check if category has transactions
-    const transactionCount = await prisma.transaction.count({
-      where: {
-        categoryId: id,
-      },
-    });
+    const transactionCount = await db.countCategoryTransactions(id);
 
     if (transactionCount > 0) {
       return NextResponse.json(
@@ -133,9 +111,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.category.delete({
-      where: { id },
-    });
+    await db.deleteCategory(id);
 
     return NextResponse.json({ message: 'Category deleted successfully' });
   } catch (error) {

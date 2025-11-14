@@ -1,6 +1,6 @@
 import { unstable_noStore as noStore } from 'next/cache';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db/prisma';
+import { db } from '@/lib/db/supabase';
 import { redirect } from 'next/navigation';
 import { TransactionListClient } from './transaction-list-client';
 
@@ -27,10 +27,7 @@ export async function TransactionList() {
   }
 
   // Get user preferences
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { currency: true, locale: true },
-  });
+  const user = await db.getUser(session.user.id);
 
   const currency = user?.currency || 'BDT';
   // Use currency's locale for number formatting, not user's language preference

@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db/prisma';
+import { db } from '@/lib/db/supabase';
 import { CategoryCard } from './category-card';
 import { Card } from '@/components/ui/card';
 import { getTranslations } from 'next-intl/server';
@@ -10,14 +10,7 @@ export async function CategoryList() {
   
   if (!session?.user?.id) return null;
 
-  const categories = await prisma.category.findMany({
-    where: {
-      userId: session.user.id,
-    },
-    orderBy: {
-      order: 'asc',
-    },
-  });
+  const categories = await db.getCategories(session.user.id);
 
   if (categories.length === 0) {
     return (

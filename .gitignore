@@ -37,9 +37,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# prisma
-prisma/migrations/*
-!prisma/migrations/.gitkeep
+# prisma (removed - using Supabase migrations now)
+# prisma/migrations/*
+# !prisma/migrations/.gitkeep
 
 # PWA files
 public/sw.js

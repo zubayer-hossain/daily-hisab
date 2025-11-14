@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db/prisma';
+import { db } from '@/lib/db/supabase';
 import { z } from 'zod';
 
 const createTransactionSchema = z.object({
@@ -24,40 +24,26 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
-    const type = searchParams.get('type');
+    const type = searchParams.get('type') as 'INCOME' | 'EXPENSE' | null;
     const categoryId = searchParams.get('categoryId');
 
-    const where: any = {
-      userId: session.user.id,
-    };
-
-    if (type === 'INCOME' || type === 'EXPENSE') {
-      where.type = type;
-    }
-
-    if (categoryId) {
-      where.categoryId = categoryId;
-    }
-
-    const transactions = await prisma.transaction.findMany({
-      where,
-      include: {
-        category: true,
-      },
-      orderBy: {
-        date: 'desc',
-      },
-      take: limit,
-      skip: offset,
+    const transactions = await db.getTransactions(session.user.id, {
+      limit,
+      offset,
+      type: type === 'INCOME' || type === 'EXPENSE' ? type : undefined,
+      categoryId: categoryId || undefined,
     });
 
     // Serialize transactions to plain objects (convert Decimal to number)
     const serializedTransactions = transactions.map((transaction) => ({
       ...transaction,
-      amount: Number(transaction.amount),
+      amount: parseFloat(transaction.amount.toString()),
     }));
 
-    const total = await prisma.transaction.count({ where });
+    const total = await db.countTransactions(session.user.id, {
+      type: type === 'INCOME' || type === 'EXPENSE' ? type : undefined,
+      categoryId: categoryId || undefined,
+    });
 
     return NextResponse.json({
       data: serializedTransactions,
@@ -84,32 +70,22 @@ export async function POST(request: NextRequest) {
     const validatedData = createTransactionSchema.parse(body);
 
     // Verify category belongs to user
-    const category = await prisma.category.findFirst({
-      where: {
-        id: validatedData.categoryId,
-        userId: session.user.id,
-      },
-    });
+    const category = await db.getCategory(validatedData.categoryId, session.user.id);
 
     if (!category) {
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
     }
 
-    const transaction = await prisma.transaction.create({
-      data: {
-        userId: session.user.id,
-        amount: validatedData.amount,
-        type: validatedData.type,
-        categoryId: validatedData.categoryId,
-        description: validatedData.description,
-        date: new Date(validatedData.date),
-        time: validatedData.time,
-        tags: validatedData.tags || [],
-        attachments: [],
-      },
-      include: {
-        category: true,
-      },
+    const transaction = await db.createTransaction({
+      userId: session.user.id,
+      amount: validatedData.amount,
+      type: validatedData.type,
+      categoryId: validatedData.categoryId,
+      description: validatedData.description,
+      date: new Date(validatedData.date),
+      time: validatedData.time,
+      tags: validatedData.tags || [],
+      attachments: [],
     });
 
     // Revalidate the dashboard page to refresh server components

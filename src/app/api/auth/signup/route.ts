@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db/prisma';
+import { db } from '@/lib/db/supabase';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
@@ -15,9 +15,7 @@ export async function POST(request: NextRequest) {
     const validatedData = signupSchema.parse(body);
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: validatedData.email },
-    });
+    const existingUser = await db.getUserByEmail(validatedData.email);
 
     if (existingUser) {
       return NextResponse.json(
@@ -30,44 +28,36 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(validatedData.password, 10);
 
     // Create user
-    const user = await prisma.user.create({
-      data: {
-        name: validatedData.name,
-        email: validatedData.email,
-        password: hashedPassword,
-        locale: 'bn',
-        theme: 'dark',
-      },
+    const user = await db.createUser({
+      name: validatedData.name,
+      email: validatedData.email,
+      password: hashedPassword,
+      locale: 'bn',
+      theme: 'dark',
     });
 
     // Create default categories for the user
     const defaultCategories = [
       // Income Categories
-      { name: 'Salary', nameBn: 'বেতন', color: '#10b981', icon: '💼', type: 'INCOME', order: 1 },
-      { name: 'Business', nameBn: 'ব্যবসা', color: '#3b82f6', icon: '🏢', type: 'INCOME', order: 2 },
-      { name: 'Investment', nameBn: 'বিনিয়োগ', color: '#8b5cf6', icon: '📈', type: 'INCOME', order: 3 },
-      { name: 'Gift', nameBn: 'উপহার', color: '#ec4899', icon: '🎁', type: 'INCOME', order: 4 },
-      { name: 'Others', nameBn: 'অন্যান্য', color: '#6b7280', icon: '💰', type: 'INCOME', order: 5 },
+      { name: 'Salary', icon: '💼', order: 1, userId: user.id, isDefault: true },
+      { name: 'Business', icon: '🏢', order: 2, userId: user.id, isDefault: true },
+      { name: 'Investment', icon: '📈', order: 3, userId: user.id, isDefault: true },
+      { name: 'Gift', icon: '🎁', order: 4, userId: user.id, isDefault: true },
+      { name: 'Others', icon: '💰', order: 5, userId: user.id, isDefault: true },
       // Expense Categories
-      { name: 'Food & Dining', nameBn: 'খাদ্য ও খাওয়া', color: '#ef4444', icon: '🍔', type: 'EXPENSE', order: 1 },
-      { name: 'Transportation', nameBn: 'যাতায়াত', color: '#f59e0b', icon: '🚗', type: 'EXPENSE', order: 2 },
-      { name: 'Shopping', nameBn: 'কেনাকাটা', color: '#ec4899', icon: '🛍️', type: 'EXPENSE', order: 3 },
-      { name: 'Entertainment', nameBn: 'বিনোদন', color: '#8b5cf6', icon: '🎬', type: 'EXPENSE', order: 4 },
-      { name: 'Bills & Utilities', nameBn: 'বিল ও ইউটিলিটি', color: '#06b6d4', icon: '💡', type: 'EXPENSE', order: 5 },
-      { name: 'Healthcare', nameBn: 'স্বাস্থ্যসেবা', color: '#10b981', icon: '⚕️', type: 'EXPENSE', order: 6 },
-      { name: 'Education', nameBn: 'শিক্ষা', color: '#3b82f6', icon: '📚', type: 'EXPENSE', order: 7 },
-      { name: 'Rent', nameBn: 'ভাড়া', color: '#f97316', icon: '🏠', type: 'EXPENSE', order: 8 },
-      { name: 'Insurance', nameBn: 'বীমা', color: '#14b8a6', icon: '🛡️', type: 'EXPENSE', order: 9 },
-      { name: 'Others', nameBn: 'অন্যান্য', color: '#6b7280', icon: '📦', type: 'EXPENSE', order: 10 },
+      { name: 'Food & Dining', icon: '🍔', order: 1, userId: user.id, isDefault: true },
+      { name: 'Transportation', icon: '🚗', order: 2, userId: user.id, isDefault: true },
+      { name: 'Shopping', icon: '🛍️', order: 3, userId: user.id, isDefault: true },
+      { name: 'Entertainment', icon: '🎬', order: 4, userId: user.id, isDefault: true },
+      { name: 'Bills & Utilities', icon: '💡', order: 5, userId: user.id, isDefault: true },
+      { name: 'Healthcare', icon: '⚕️', order: 6, userId: user.id, isDefault: true },
+      { name: 'Education', icon: '📚', order: 7, userId: user.id, isDefault: true },
+      { name: 'Rent', icon: '🏠', order: 8, userId: user.id, isDefault: true },
+      { name: 'Insurance', icon: '🛡️', order: 9, userId: user.id, isDefault: true },
+      { name: 'Others', icon: '📦', order: 10, userId: user.id, isDefault: true },
     ];
 
-    await prisma.category.createMany({
-      data: defaultCategories.map((cat) => ({
-        ...cat,
-        userId: user.id,
-        isDefault: true,
-      })),
-    });
+    await db.createCategories(defaultCategories);
 
     return NextResponse.json(
       {

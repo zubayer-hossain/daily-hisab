@@ -1,11 +1,11 @@
 import { NextAuthConfig } from 'next-auth';
 import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
-import { prisma } from '@/lib/db/prisma';
+import { db } from '@/lib/db/supabase';
 import bcrypt from 'bcryptjs';
 
 export const authConfig: NextAuthConfig = {
-  // Removed PrismaAdapter - using JWT sessions instead
+  // Using JWT sessions with Supabase database
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -29,9 +29,7 @@ export const authConfig: NextAuthConfig = {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-        });
+        const user = await db.getUserByEmail(credentials.email as string);
 
         if (!user || !user.password) {
           return null;
@@ -65,56 +63,44 @@ export const authConfig: NextAuthConfig = {
       if (account?.provider === 'google' && account.providerAccountId) {
         try {
           // Check if user exists by Google ID
-          let dbUser = await prisma.user.findUnique({
-            where: { googleId: account.providerAccountId },
-          });
+          let dbUser = await db.getUserByGoogleId(account.providerAccountId);
 
           // If not found, check by email
           if (!dbUser && user.email) {
-            dbUser = await prisma.user.findUnique({
-              where: { email: user.email },
-            });
+            dbUser = await db.getUserByEmail(user.email);
           }
 
           // Create user if doesn't exist
           if (!dbUser && user.email) {
-            dbUser = await prisma.user.create({
-              data: {
-                name: user.name || '',
-                email: user.email,
-                image: user.image || null,
-                googleId: account.providerAccountId,
-                locale: 'bn',
-                theme: 'dark',
-              },
+            dbUser = await db.createUser({
+              name: user.name || '',
+              email: user.email,
+              image: user.image || null,
+              googleId: account.providerAccountId,
+              locale: 'bn',
+              theme: 'dark',
             });
 
             // Create default categories for new user
             const defaultCategories = [
-              { name: 'Salary', nameBn: 'বেতন', color: '#10b981', icon: '💼', type: 'INCOME', order: 1 },
-              { name: 'Business', nameBn: 'ব্যবসা', color: '#3b82f6', icon: '🏢', type: 'INCOME', order: 2 },
-              { name: 'Investment', nameBn: 'বিনিয়োগ', color: '#8b5cf6', icon: '📈', type: 'INCOME', order: 3 },
-              { name: 'Gift', nameBn: 'উপহার', color: '#ec4899', icon: '🎁', type: 'INCOME', order: 4 },
-              { name: 'Others', nameBn: 'অন্যান্য', color: '#6b7280', icon: '💰', type: 'INCOME', order: 5 },
-              { name: 'Food & Dining', nameBn: 'খাদ্য ও খাওয়া', color: '#ef4444', icon: '🍔', type: 'EXPENSE', order: 1 },
-              { name: 'Transportation', nameBn: 'যাতায়াত', color: '#f59e0b', icon: '🚗', type: 'EXPENSE', order: 2 },
-              { name: 'Shopping', nameBn: 'কেনাকাটা', color: '#ec4899', icon: '🛍️', type: 'EXPENSE', order: 3 },
-              { name: 'Entertainment', nameBn: 'বিনোদন', color: '#8b5cf6', icon: '🎬', type: 'EXPENSE', order: 4 },
-              { name: 'Bills & Utilities', nameBn: 'বিল ও ইউটিলিটি', color: '#06b6d4', icon: '💡', type: 'EXPENSE', order: 5 },
-              { name: 'Healthcare', nameBn: 'স্বাস্থ্যসেবা', color: '#10b981', icon: '⚕️', type: 'EXPENSE', order: 6 },
-              { name: 'Education', nameBn: 'শিক্ষা', color: '#3b82f6', icon: '📚', type: 'EXPENSE', order: 7 },
-              { name: 'Rent', nameBn: 'ভাড়া', color: '#f97316', icon: '🏠', type: 'EXPENSE', order: 8 },
-              { name: 'Insurance', nameBn: 'বীমা', color: '#14b8a6', icon: '🛡️', type: 'EXPENSE', order: 9 },
-              { name: 'Others', nameBn: 'অন্যান্য', color: '#6b7280', icon: '📦', type: 'EXPENSE', order: 10 },
+              { name: 'Salary', icon: '💼', order: 1, userId: dbUser.id, isDefault: true },
+              { name: 'Business', icon: '🏢', order: 2, userId: dbUser.id, isDefault: true },
+              { name: 'Investment', icon: '📈', order: 3, userId: dbUser.id, isDefault: true },
+              { name: 'Gift', icon: '🎁', order: 4, userId: dbUser.id, isDefault: true },
+              { name: 'Others', icon: '💰', order: 5, userId: dbUser.id, isDefault: true },
+              { name: 'Food & Dining', icon: '🍔', order: 1, userId: dbUser.id, isDefault: true },
+              { name: 'Transportation', icon: '🚗', order: 2, userId: dbUser.id, isDefault: true },
+              { name: 'Shopping', icon: '🛍️', order: 3, userId: dbUser.id, isDefault: true },
+              { name: 'Entertainment', icon: '🎬', order: 4, userId: dbUser.id, isDefault: true },
+              { name: 'Bills & Utilities', icon: '💡', order: 5, userId: dbUser.id, isDefault: true },
+              { name: 'Healthcare', icon: '⚕️', order: 6, userId: dbUser.id, isDefault: true },
+              { name: 'Education', icon: '📚', order: 7, userId: dbUser.id, isDefault: true },
+              { name: 'Rent', icon: '🏠', order: 8, userId: dbUser.id, isDefault: true },
+              { name: 'Insurance', icon: '🛡️', order: 9, userId: dbUser.id, isDefault: true },
+              { name: 'Others', icon: '📦', order: 10, userId: dbUser.id, isDefault: true },
             ];
 
-            await prisma.category.createMany({
-              data: defaultCategories.map((cat) => ({
-                ...cat,
-                userId: dbUser.id,
-                isDefault: true,
-              })),
-            });
+            await db.createCategories(defaultCategories);
           }
 
           // Update user ID and preferences for JWT token

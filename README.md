@@ -6,32 +6,30 @@ A modern, mobile-first web application for tracking daily income and expenses wi
 
 - 🔐 **Google OAuth Authentication** - Secure login with Google
 - 💵 **Income & Expense Tracking** - Easy-to-use transaction management
-- 📊 **Visual Reports** - Pie charts, bar charts, and category-wise breakdown
-- 📅 **Calendar View** - Filter transactions by date
+- 📊 **Visual Reports** - Dashboard with summary cards and transaction lists
 - 🎨 **Dark/Light Mode** - Beautiful UI with theme support
-- 🇧🇩 **Bangla Language** - Full support for Bengali language
-- 📱 **Mobile-First Design** - Optimized for mobile devices
-- 💾 **Google Drive Backup** - Automatic backup to Google Drive
-- 🔍 **Advanced Filters** - Search and filter by category, date, amount
-- 📴 **Offline Support** - PWA with offline capabilities
+- 🇧🇩 **Bangla Language** - Full support for Bengali language (English also supported)
+- 📱 **Mobile-First Design** - Optimized for mobile devices with responsive tabs
+- 💰 **Multi-Currency Support** - Choose your preferred currency (BDT, USD, EUR, GBP, INR, PKR, JPY, CNY, AUD, CAD)
+- 🔍 **Advanced Filters** - Search and filter transactions
+- ♾️ **Infinite Scroll** - Lazy loading for better performance
 
 ## 🚀 Tech Stack
 
 ### Frontend
-- **Next.js 14** - React framework with App Router
+- **Next.js 15** - React framework with App Router
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Utility-first styling
 - **shadcn/ui** - Beautiful UI components
-- **Zustand** - State management
 - **React Query** - Server state management
-- **Recharts** - Data visualization
+- **next-intl** - Internationalization (i18n)
 
 ### Backend
 - **Next.js API Routes** - Serverless API
-- **PostgreSQL** - Primary database
-- **Prisma** - Type-safe ORM
+- **Supabase** - PostgreSQL database with real-time capabilities
+- **Supabase JS Client** - Native Supabase client for database operations
 - **NextAuth.js** - Authentication
-- **Google Drive API** - Backup storage
+- **Zod** - Schema validation
 
 ### Testing
 - **Vitest** - Unit testing
@@ -40,17 +38,16 @@ A modern, mobile-first web application for tracking daily income and expenses wi
 
 ## 📋 Prerequisites
 
-- Node.js 20+ 
-- PostgreSQL database
+- Node.js 20+
+- Supabase account (free tier available)
 - Google OAuth credentials
-- Google Drive API credentials (for backup)
 
 ## 🛠️ Installation
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/daily-hisab-app.git
-cd daily-hisab-app
+git clone https://github.com/zubayer-hossain/daily-hisab.git
+cd daily-hisab
 ```
 
 2. **Install dependencies**
@@ -58,27 +55,56 @@ cd daily-hisab-app
 npm install
 ```
 
-3. **Set up environment variables**
-```bash
-cp .env.example .env
-```
+3. **Set up Supabase**
 
-Edit `.env` and add your credentials:
+   a. Create a new project at [supabase.com](https://supabase.com)
+   
+   b. Go to **Settings → API** and copy:
+      - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
+      - **anon/public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   
+   c. Go to **Settings → Database** and copy the **Connection string** (use Direct connection, port 6543)
+
+4. **Set up environment variables**
+
+   Create a `.env` file in the root directory:
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/daily_hisab"
+# Supabase Configuration (REQUIRED)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+
+# Database Connection (NOT NEEDED - using Supabase SQL migrations)
+# DATABASE_URL is not required - all database operations use Supabase client
+
+# NextAuth Configuration
 NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret-key"
-GOOGLE_CLIENT_ID="your-google-client-id"
+NEXTAUTH_SECRET="your-generated-secret-key-here"
+
+# Google OAuth
+GOOGLE_CLIENT_ID="your-google-client-id.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
+
+# App Settings
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+NEXT_PUBLIC_DEFAULT_LOCALE="bn"
 ```
 
-4. **Set up the database**
-```bash
-npm run db:push
-npm run db:seed
-```
+5. **Set up the database schema**
 
-5. **Run the development server**
+   Run the SQL migration in Supabase:
+   
+   a. Go to your Supabase project dashboard
+   b. Navigate to **SQL Editor**
+   c. Open `supabase/migrations/001_initial_schema.sql` from this project
+   d. Copy and paste the SQL into the editor
+   e. Click **Run** to create all tables
+   
+   Or use Supabase CLI:
+   ```bash
+   supabase db push
+   ```
+
+6. **Run the development server**
 ```bash
 npm run dev
 ```
@@ -96,6 +122,16 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
    - `http://localhost:3000/api/auth/callback/google` (development)
    - `https://yourdomain.com/api/auth/callback/google` (production)
 7. Copy the Client ID and Client Secret to your `.env` file
+
+## 🔑 Generating NEXTAUTH_SECRET
+
+```bash
+# On Unix/Linux/Mac
+openssl rand -base64 32
+
+# On Windows (PowerShell)
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```
 
 ## 🧪 Testing
 
@@ -127,40 +163,44 @@ npm start
 
 1. Push your code to GitHub
 2. Import project in [Vercel](https://vercel.com)
-3. Add environment variables
+3. Add environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `DATABASE_URL`
+   - `NEXTAUTH_URL`
+   - `NEXTAUTH_SECRET`
+   - `GOOGLE_CLIENT_ID`
+   - `GOOGLE_CLIENT_SECRET`
 4. Deploy!
-
-### Docker
-
-```bash
-docker build -t daily-hisab .
-docker run -p 3000:3000 daily-hisab
-```
 
 ## 📂 Project Structure
 
 ```
 daily-hisab-app/
 ├── src/
-│   ├── app/                    # Next.js 14 App Router
-│   │   ├── (auth)/            # Auth routes
-│   │   ├── (dashboard)/       # Protected routes
-│   │   └── api/               # API routes
+│   ├── app/                    # Next.js 15 App Router
+│   │   ├── api/               # API routes
+│   │   ├── dashboard/        # Protected routes
+│   │   └── login/            # Auth routes
 │   ├── components/            # React components
 │   │   ├── ui/               # UI components (shadcn/ui)
 │   │   ├── dashboard/        # Dashboard components
 │   │   ├── transactions/     # Transaction components
+│   │   ├── categories/       # Category components
+│   │   ├── settings/         # Settings components
 │   │   └── layout/           # Layout components
 │   ├── lib/                   # Utilities
-│   │   ├── db/               # Database config
+│   │   ├── db/               # Database helpers (Supabase)
 │   │   ├── auth/             # Auth config
-│   │   └── services/         # Business logic
+│   │   └── utils.ts          # Utility functions
+│   ├── utils/                 # Supabase utilities
+│   │   └── supabase/         # Supabase client helpers
 │   ├── hooks/                 # Custom hooks
-│   ├── store/                 # State management
 │   ├── types/                 # TypeScript types
 │   └── i18n/                  # Internationalization
-├── prisma/                    # Database schema
-├── tests/                     # Test files
+│       └── messages/         # Translation files (en.json, bn.json)
+├── supabase/                  # Supabase migrations
+│   └── migrations/          # SQL migration files
 └── public/                    # Static assets
 ```
 
@@ -168,13 +208,26 @@ daily-hisab-app/
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Yes |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
+| `DATABASE_URL` | Not needed - using Supabase SQL migrations | No |
 | `NEXTAUTH_URL` | App URL | Yes |
 | `NEXTAUTH_SECRET` | Secret key for auth | Yes |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID | Yes |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | Yes |
-| `GOOGLE_DRIVE_CLIENT_ID` | Google Drive API client ID | Optional |
-| `GOOGLE_DRIVE_CLIENT_SECRET` | Google Drive API secret | Optional |
+| `NEXT_PUBLIC_APP_URL` | Public app URL | Yes |
+| `NEXT_PUBLIC_DEFAULT_LOCALE` | Default language (bn/en) | Yes |
+
+## 🗄️ Database
+
+This project uses **Supabase** (PostgreSQL) for all database operations. The Supabase client is used directly for queries, providing:
+
+- ✅ No prepared statement errors
+- ✅ Better performance with Supabase infrastructure
+- ✅ Edge Runtime compatibility
+- ✅ Real-time capabilities (ready for future features)
+
+**Note:** This project uses **Supabase SQL migrations** (see `supabase/migrations/`). All queries use Supabase client directly!
 
 ## 🤝 Contributing
 
@@ -188,26 +241,29 @@ Contributions are welcome! Please follow these steps:
 
 ## 📝 Development Workflow
 
-This project follows **Test-Driven Development (TDD)**:
+1. Make changes to the code
+2. Test locally with `npm run dev`
+3. Run tests: `npm test`
+4. Commit and push changes
 
-1. Write a failing test
-2. Write minimal code to pass the test
-3. Refactor the code
-4. Repeat
+## 🐛 Troubleshooting
 
-## 🐛 Known Issues
+### Database Connection Issues
 
-- [ ] PWA offline mode needs optimization
-- [ ] Google Drive backup is in beta
+If you encounter "prepared statement does not exist" errors:
+- Ensure you're using **Direct connection** (port 6543) in `DATABASE_URL`
+- Check that your Supabase project is active (not paused)
+- Verify your `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are correct
 
-## 🗺️ Roadmap
+### Reset Development Environment
 
-- [ ] Export reports as PDF/Excel
-- [ ] Recurring transactions
-- [ ] Budget planning
-- [ ] Multi-currency support
-- [ ] Shared accounts
-- [ ] Receipt scanning with OCR
+```bash
+npm run reset
+```
+
+This will:
+- Stop all Node.js processes
+- Clear Next.js cache
 
 ## 📄 License
 
@@ -215,17 +271,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 Author
 
-Your Name - [@yourusername](https://twitter.com/yourusername)
+Zubayer Hossain - [GitHub](https://github.com/zubayer-hossain)
 
 ## 🙏 Acknowledgments
 
 - [Next.js](https://nextjs.org/)
+- [Supabase](https://supabase.com/)
 - [shadcn/ui](https://ui.shadcn.com/)
 - [Tailwind CSS](https://tailwindcss.com/)
-- [Prisma](https://www.prisma.io/)
 - [NextAuth.js](https://next-auth.js.org/)
+- [next-intl](https://next-intl-docs.vercel.app/)
 
 ---
 
 **Made with ❤️ for the Bangladeshi community**
-

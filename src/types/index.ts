@@ -1,6 +1,4 @@
-import { TransactionType } from '@prisma/client';
-
-export type { TransactionType };
+export type TransactionType = 'INCOME' | 'EXPENSE';
 
 export interface Transaction {
   id: string;
