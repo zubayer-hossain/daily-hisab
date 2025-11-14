@@ -62,8 +62,9 @@ npm install
    b. Go to **Settings → API** and copy:
       - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
       - **anon/public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+      - **service_role key** (secret) → `SUPABASE_SERVICE_ROLE_KEY`
    
-   c. Go to **Settings → Database** and copy the **Connection string** (use Direct connection, port 6543)
+   ⚠️ **Important:** The service role key bypasses Row Level Security - keep it secret!
 
 4. **Set up environment variables**
 
@@ -72,9 +73,7 @@ npm install
 # Supabase Configuration (REQUIRED)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-
-# Database Connection (NOT NEEDED - using Supabase SQL migrations)
-# DATABASE_URL is not required - all database operations use Supabase client
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
 # NextAuth Configuration
 NEXTAUTH_URL="http://localhost:3000"
@@ -98,6 +97,8 @@ NEXT_PUBLIC_DEFAULT_LOCALE="bn"
    c. Open `supabase/migrations/001_initial_schema.sql` from this project
    d. Copy and paste the SQL into the editor
    e. Click **Run** to create all tables
+   
+   ✅ This migration automatically fixes schema permissions and creates all tables
    
    Or use Supabase CLI:
    ```bash

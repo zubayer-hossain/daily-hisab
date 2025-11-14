@@ -1,5 +1,25 @@
+-- ============================================
+-- STEP 1: Fix Schema Permissions
+-- ============================================
+-- This fixes "permission denied for schema public" error
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO anon;
+GRANT ALL ON SCHEMA public TO authenticated;
+GRANT ALL ON SCHEMA public TO service_role;
+
+-- Allow creating tables in the public schema
+GRANT CREATE ON SCHEMA public TO postgres;
+GRANT CREATE ON SCHEMA public TO service_role;
+
+-- ============================================
+-- STEP 2: Enable Extensions
+-- ============================================
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ============================================
+-- STEP 3: Create Database Tables
+-- ============================================
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
@@ -105,6 +125,10 @@ CREATE TABLE IF NOT EXISTS backups (
 
 CREATE INDEX IF NOT EXISTS idx_backups_userId_status ON backups("userId", status);
 
+-- ============================================
+-- STEP 4: Create Functions and Triggers
+-- ============================================
+
 -- Function to update updatedAt timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -115,17 +139,28 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Triggers to auto-update updatedAt
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_categories_updated_at ON categories;
 CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_transactions_updated_at ON transactions;
 CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON transactions
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
--- Row Level Security (RLS) Configuration
+-- STEP 5: Grant Table Permissions
+-- ============================================
+-- Grant full access to service_role (used by NextAuth server-side)
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO service_role;
+
+-- ============================================
+-- STEP 6: Row Level Security (RLS) Configuration
 -- ============================================
 -- NOTE: Since we're using NextAuth (not Supabase Auth), we have two options:
 -- 1. Use SUPABASE_SERVICE_ROLE_KEY (recommended) - bypasses RLS
@@ -154,4 +189,18 @@ CREATE POLICY "Allow all on categories" ON categories FOR ALL USING (true) WITH 
 CREATE POLICY "Allow all on transactions" ON transactions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on backups" ON backups FOR ALL USING (true) WITH CHECK (true);
 */
+
+-- ============================================
+-- DONE! Database is ready to use.
+-- ============================================
+-- This script includes:
+-- ✓ Schema permission fixes
+-- ✓ All tables (users, accounts, sessions, categories, transactions, backups)
+-- ✓ Indexes for performance
+-- ✓ Auto-update triggers
+-- ✓ Service role permissions
+--
+-- After running this script, restart your Next.js dev server:
+--   npm run dev
+-- ============================================
 

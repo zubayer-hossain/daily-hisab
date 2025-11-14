@@ -121,10 +121,9 @@ daily-hisab-app/
 │   ├── CONTRIBUTING.md
 │   └── PROJECT_SUMMARY.md (this file)
 │
-├── 🗄️ Database (3)
-│   ├── prisma/schema.prisma
-│   ├── prisma/seed.ts
-│   └── prisma/migrations/.gitkeep
+├── 🗄️ Database (2)
+│   ├── supabase/migrations/001_initial_schema.sql
+│   └── supabase/README.md
 │
 ├── 🎨 UI Components (9)
 │   ├── src/components/ui/button.tsx
@@ -161,11 +160,12 @@ daily-hisab-app/
 │   ├── src/app/api/transactions/[id]/route.ts
 │   └── src/app/api/categories/route.ts
 │
-├── 🛠️ Utilities & Config (7)
+├── 🛠️ Utilities & Config (8)
 │   ├── src/lib/utils.ts
-│   ├── src/lib/db/prisma.ts
+│   ├── src/lib/db/supabase.ts
 │   ├── src/lib/auth/config.ts
 │   ├── src/lib/auth/index.ts
+│   ├── src/utils/supabase/ (client, server, middleware)
 │   ├── src/middleware.ts
 │   └── src/types/ (index, next-auth)
 │
@@ -222,14 +222,16 @@ daily-hisab-app/
 └─────────────────────────────────────┘
               ↓
 ┌─────────────────────────────────────┐
-│         Prisma ORM                   │
+│      Supabase JS Client              │
 │  - Type-safe queries                 │
-│  - Migration management              │
+│  - Real-time capabilities            │
+│  - Row Level Security (RLS)          │
 └─────────────────────────────────────┘
               ↓
 ┌─────────────────────────────────────┐
-│      PostgreSQL Database             │
+│   Supabase (PostgreSQL Database)    │
 │  - Users, Transactions, Categories   │
+│  - Hosted & Managed                  │
 └─────────────────────────────────────┘
 ```
 
@@ -430,14 +432,14 @@ Based on the original plan, here are the next features to implement:
 
 | Category | Technology | Purpose |
 |----------|-----------|---------|
-| Framework | Next.js 14 | React framework |
+| Framework | Next.js 15 | React framework |
 | Language | TypeScript | Type safety |
 | Styling | Tailwind CSS | Utility-first CSS |
 | UI | shadcn/ui | Component library |
-| Database | PostgreSQL | Data storage |
-| ORM | Prisma | Database toolkit |
+| Database | Supabase | PostgreSQL + Real-time |
+| Client | Supabase JS | Database client |
 | Auth | NextAuth.js | Authentication |
-| State | Zustand | State management |
+| State | React Query | Server state |
 | Testing | Vitest + Playwright | Testing |
 | i18n | next-intl | Internationalization |
 
@@ -460,7 +462,7 @@ Based on the original plan, here are the next features to implement:
 If you want to understand the codebase better:
 
 1. **Next.js**: https://nextjs.org/docs
-2. **Prisma**: https://www.prisma.io/docs
+2. **Supabase**: https://supabase.com/docs
 3. **NextAuth**: https://next-auth.js.org
 4. **Tailwind**: https://tailwindcss.com/docs
 5. **shadcn/ui**: https://ui.shadcn.com

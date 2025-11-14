@@ -39,18 +39,12 @@ This will install all required packages including:
    - Click "Create new project"
    - Wait 1-2 minutes for project to be ready
 
-2. **Get Supabase Credentials**
+2. **Get Supabase API Keys**
    - Go to **Settings → API**
    - Copy **Project URL** → This is your `NEXT_PUBLIC_SUPABASE_URL`
    - Copy **anon/public key** → This is your `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-3. **Get Database Connection String**
-   - Go to **Settings → Database**
-   - Scroll to **Connection string** section
-   - Click **URI** tab
-   - Select **Direct connection** (port 6543)
-   - Copy the connection string → This is your `DATABASE_URL`
-   - **Important:** Replace `[YOUR-PASSWORD]` with your actual database password
+   - Copy **service_role key** (secret) → This is your `SUPABASE_SERVICE_ROLE_KEY`
+   - ⚠️ **Important:** The service role key is sensitive - never expose it in client-side code!
 
 ### 3. Google OAuth Setup
 
@@ -108,9 +102,7 @@ Create a `.env` file in the project root with:
 # Supabase Configuration (REQUIRED)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-
-# Database Connection (NOT NEEDED - using Supabase SQL migrations)
-# DATABASE_URL is not required - all database operations use Supabase client
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
 # NextAuth
 NEXTAUTH_URL="http://localhost:3000"
@@ -137,6 +129,13 @@ Run the SQL migration in Supabase:
 5. Paste it into the SQL Editor
 6. Click **Run** to execute the migration
 
+✅ This migration script automatically:
+- Fixes schema permissions (resolves "permission denied" errors)
+- Creates all database tables (users, accounts, sessions, categories, transactions, backups)
+- Sets up indexes for performance
+- Creates auto-update triggers
+- Grants permissions to service_role
+
 **Option 2: Using Supabase CLI**
 ```bash
 # Install Supabase CLI (if not installed)
@@ -148,8 +147,6 @@ supabase link --project-ref your-project-ref
 # Push migrations
 supabase db push
 ```
-
-This will create all necessary tables in your Supabase database.
 
 ### 7. Start Development Server
 
@@ -171,12 +168,24 @@ The application should now be running. You can:
 
 ## 🔧 Troubleshooting
 
+### "Permission denied for schema public" Error
+
+This is now automatically fixed by the migration script! If you still see this error:
+1. Make sure you've run `supabase/migrations/001_initial_schema.sql`
+2. Verify `SUPABASE_SERVICE_ROLE_KEY` is set in your `.env` file
+3. Restart your dev server: `npm run dev`
+
+See `supabase/README.md` for more details.
+
 ### Database Connection Issues
 
-If you get "prepared statement does not exist" errors:
-- Make sure you're using **Direct connection** (port 6543) in `DATABASE_URL`
+If you can't connect to Supabase:
 - Check that your Supabase project is active (not paused)
-- Verify your password is correct in the connection string
+- Verify all three Supabase keys are correctly set in `.env`:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+- Restart your dev server after changing `.env`
 
 ### Reset Development Environment
 
@@ -187,14 +196,6 @@ npm run reset
 This will:
 - Stop all Node.js processes
 - Clear Next.js cache
-
-### Check Database Connection
-
-```bash
-npm run db:check
-```
-
-This will verify your Supabase connection and provide helpful error messages if something is wrong.
 
 ## 📚 Next Steps
 

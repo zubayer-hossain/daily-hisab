@@ -230,7 +230,7 @@ When modifying the database schema:
 
 - Update README.md for major features
 - Add JSDoc comments for complex functions
-- Update SETUP_GUIDE.md if setup changes
+- Update SETUP_GUIDE.md and README.md if setup changes
 - Include screenshots for UI changes
 
 ## Review Process
