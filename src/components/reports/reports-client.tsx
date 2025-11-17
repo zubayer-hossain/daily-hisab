@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ReportFilters } from './report-filters';
 import { CategoryBreakdownChart } from './category-breakdown-chart';
 import { MonthlyTrendChart } from './monthly-trend-chart';
 import { IncomeExpenseChart } from './income-expense-chart';
 import { TopCategoriesTable } from './top-categories-table';
 import { formatCurrency } from '@/lib/utils';
-import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp, TrendingDown, DollarSign, Percent, BarChart3 } from 'lucide-react';
 import { startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, startOfWeek, endOfWeek, startOfDay, endOfDay } from 'date-fns';
 
 type Category = {
@@ -62,6 +63,7 @@ const CURRENCY_LOCALES: Record<string, string> = {
 
 export function ReportsClient({ userId, categories, currency, locale: userLocale }: Props) {
   const t = useTranslations();
+  const { toast } = useToast();
   const locale = CURRENCY_LOCALES[currency] || 'en-US';
   
   const [filters, setFilters] = useState<FilterValues>({
@@ -166,14 +168,23 @@ export function ReportsClient({ userId, categories, currency, locale: userLocale
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `report-${format}-${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'html'}`;
+      a.download = `report-${format}-${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'pdf'}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      
+      toast({
+        title: t('transaction.success'),
+        description: t('reports.exportSuccess'),
+      });
     } catch (error) {
       console.error('Error exporting report:', error);
-      alert(t('reports.exportFailed'));
+      toast({
+        title: t('common.error'),
+        description: t('reports.exportFailed'),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -189,8 +200,19 @@ export function ReportsClient({ userId, categories, currency, locale: userLocale
     );
   }
 
+  // Calculate insightful metrics
+  const savingsRate = reportData.totalIncome > 0 
+    ? ((reportData.balance / reportData.totalIncome) * 100).toFixed(1)
+    : '0.0';
+  const avgTransaction = reportData.transactionCount > 0
+    ? (reportData.totalIncome + reportData.totalExpense) / reportData.transactionCount
+    : 0;
+  const expenseRatio = reportData.totalIncome > 0
+    ? ((reportData.totalExpense / reportData.totalIncome) * 100).toFixed(1)
+    : '0.0';
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Filters */}
       <ReportFilters
         filters={filters}
@@ -199,73 +221,122 @@ export function ReportsClient({ userId, categories, currency, locale: userLocale
         onExport={handleExportReport}
       />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="p-4">
-          <CardHeader className="p-0 pb-2">
+      {/* Key Metrics - Primary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-950/20">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">{t('common.income')}</CardTitle>
-              <ArrowUpCircle className="h-4 w-4 text-green-500" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t('common.income')}</CardTitle>
+              <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <ArrowDownCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="text-lg md:text-2xl font-bold text-green-500">
+          <CardContent>
+            <div className="text-2xl md:text-3xl font-bold text-green-600 dark:text-green-400">
               {formatCurrency(reportData.totalIncome, locale, currency)}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="p-4">
-          <CardHeader className="p-0 pb-2">
+        <Card className="border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/20">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">{t('common.expense')}</CardTitle>
-              <ArrowDownCircle className="h-4 w-4 text-red-500" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t('common.expense')}</CardTitle>
+              <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <ArrowUpCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="text-lg md:text-2xl font-bold text-red-500">
+          <CardContent>
+            <div className="text-2xl md:text-3xl font-bold text-red-600 dark:text-red-400">
               {formatCurrency(reportData.totalExpense, locale, currency)}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="p-4">
-          <CardHeader className="p-0 pb-2">
+        <Card className={`${reportData.balance >= 0 ? 'border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20' : 'border-orange-200 dark:border-orange-900 bg-orange-50/50 dark:bg-orange-950/20'}`}>
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">{t('common.balance')}</CardTitle>
-              <Wallet className="h-4 w-4 text-blue-500" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t('common.balance')}</CardTitle>
+              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${reportData.balance >= 0 ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-orange-100 dark:bg-orange-900/30'}`}>
+                <Wallet className={`h-5 w-5 ${reportData.balance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`} />
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className={`text-lg md:text-2xl font-bold ${reportData.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
+          <CardContent>
+            <div className={`text-2xl md:text-3xl font-bold ${reportData.balance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
               {formatCurrency(reportData.balance, locale, currency)}
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="p-4">
-          <CardHeader className="p-0 pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">{t('reports.totalTransactions')}</CardTitle>
-              <TrendingUp className="h-4 w-4 text-purple-500" />
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="text-lg md:text-2xl font-bold text-purple-500">
-              {reportData.transactionCount}
-            </div>
+            {reportData.totalIncome > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {savingsRate}% {t('reports.savingsRate')}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts */}
-      <div className="space-y-4">
+      {/* Secondary Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-muted-foreground">{t('reports.totalTransactions')}</p>
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="text-xl font-semibold">{reportData.transactionCount}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-muted-foreground">{t('reports.avgTransaction')}</p>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="text-xl font-semibold">{formatCurrency(avgTransaction, locale, currency)}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-muted-foreground">{t('reports.expenseRatio')}</p>
+              <Percent className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="text-xl font-semibold">{expenseRatio}%</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-muted-foreground">{t('reports.savingsRate')}</p>
+              {parseFloat(savingsRate) >= 0 ? (
+                <TrendingUp className="h-4 w-4 text-green-500" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-red-500" />
+              )}
+            </div>
+            <p className={`text-xl font-semibold ${parseFloat(savingsRate) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {savingsRate}%
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts & Analysis */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Income vs Expense Chart */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">{t('reports.incomeVsExpense')}</CardTitle>
+          <CardHeader>
+            <CardTitle className="text-lg">{t('reports.incomeVsExpense')}</CardTitle>
+            <CardDescription className="text-xs">
+              {t('reports.incomeVsExpenseDesc')}
+            </CardDescription>
           </CardHeader>
-          <CardContent className="pb-3">
+          <CardContent>
             <IncomeExpenseChart
               income={reportData.totalIncome}
               expense={reportData.totalExpense}
@@ -276,26 +347,37 @@ export function ReportsClient({ userId, categories, currency, locale: userLocale
         </Card>
 
         {/* Monthly Trend Chart */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">{t('reports.monthlyTrend')}</CardTitle>
+        {reportData.monthlyTrend.length > 0 && (
+          <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">{t('reports.monthlyTrend')}</CardTitle>
+            <CardDescription className="text-xs">
+              {t('reports.monthlyTrendDesc')}
+            </CardDescription>
           </CardHeader>
-          <CardContent className="pb-3">
-            <MonthlyTrendChart
-              data={reportData.monthlyTrend}
-              currency={currency}
-              locale={locale}
-            />
-          </CardContent>
-        </Card>
+            <CardContent>
+              <MonthlyTrendChart
+                data={reportData.monthlyTrend}
+                currency={currency}
+                locale={locale}
+              />
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
+      {/* Category Breakdowns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Category Breakdown - Income */}
         {reportData.categoryBreakdown.income.length > 0 && (
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t('dashboard.categoryWiseIncome')}</CardTitle>
+            <CardHeader>
+              <CardTitle className="text-lg">{t('dashboard.categoryWiseIncome')}</CardTitle>
+              <CardDescription className="text-xs">
+                {t('reports.categoryBreakdownDesc')}
+              </CardDescription>
             </CardHeader>
-            <CardContent className="pb-3">
+            <CardContent>
               <CategoryBreakdownChart
                 data={reportData.categoryBreakdown.income}
                 currency={currency}
@@ -308,10 +390,13 @@ export function ReportsClient({ userId, categories, currency, locale: userLocale
         {/* Category Breakdown - Expense */}
         {reportData.categoryBreakdown.expense.length > 0 && (
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t('dashboard.categoryWiseExpense')}</CardTitle>
+            <CardHeader>
+              <CardTitle className="text-lg">{t('dashboard.categoryWiseExpense')}</CardTitle>
+              <CardDescription className="text-xs">
+                {t('reports.categoryBreakdownDesc')}
+              </CardDescription>
             </CardHeader>
-            <CardContent className="pb-3">
+            <CardContent>
               <CategoryBreakdownChart
                 data={reportData.categoryBreakdown.expense}
                 currency={currency}
@@ -320,38 +405,55 @@ export function ReportsClient({ userId, categories, currency, locale: userLocale
             </CardContent>
           </Card>
         )}
-
-        {/* Top Categories Table */}
-        {reportData.topCategories.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t('reports.topCategories')}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <TopCategoriesTable
-                data={reportData.topCategories}
-                currency={currency}
-                locale={locale}
-              />
-            </CardContent>
-          </Card>
-        )}
       </div>
+
+      {/* Top Categories Table */}
+      {reportData.topCategories.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">{t('reports.topCategories')}</CardTitle>
+            <CardDescription className="text-xs">
+              {t('reports.topCategoriesDesc')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TopCategoriesTable
+              data={reportData.topCategories}
+              currency={currency}
+              locale={locale}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
 
 function ReportLoadingSkeleton() {
   return (
-    <div className="space-y-4">
-      <Card className="p-3">
-        <div className="space-y-3">
+    <div className="space-y-6">
+      {/* Filters Skeleton */}
+      <Card className="p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-10 bg-muted rounded animate-pulse" />
+            <div key={i} className="space-y-1.5">
+              <div className="h-3 w-20 bg-muted rounded animate-pulse" />
+              <div className="h-9 bg-muted rounded animate-pulse" />
+            </div>
           ))}
         </div>
       </Card>
 
+      {/* Primary Metrics Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="p-4">
+            <div className="h-20 bg-muted rounded animate-pulse" />
+          </Card>
+        ))}
+      </div>
+
+      {/* Secondary Metrics Skeleton */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i} className="p-4">
@@ -360,7 +462,8 @@ function ReportLoadingSkeleton() {
         ))}
       </div>
 
-      <div className="space-y-4">
+      {/* Charts Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {[1, 2].map((i) => (
           <Card key={i} className="p-4">
             <div className="h-64 bg-muted rounded animate-pulse" />
@@ -371,7 +474,4 @@ function ReportLoadingSkeleton() {
   );
 }
 
-async function handleExport(format: 'csv' | 'pdf', data: ReportData) {
-  // This will be implemented in the component
-}
 

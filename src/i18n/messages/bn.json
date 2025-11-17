@@ -154,7 +154,14 @@
     "exportPDF": "PDF এক্সপোর্ট করুন",
     "generating": "তৈরি করা হচ্ছে...",
     "exportSuccess": "রিপোর্ট সফলভাবে এক্সপোর্ট হয়েছে",
-    "exportFailed": "রিপোর্ট এক্সপোর্ট করতে ব্যর্থ"
+    "exportFailed": "রিপোর্ট এক্সপোর্ট করতে ব্যর্থ",
+    "savingsRate": "সঞ্চয় হার",
+    "avgTransaction": "গড় লেনদেন",
+    "expenseRatio": "ব্যয় অনুপাত",
+    "incomeVsExpenseDesc": "আপনার আয় এবং ব্যয়ের সারসংক্ষেপ",
+    "monthlyTrendDesc": "সময়ের সাথে আপনার আর্থিক প্রবণতা ট্র্যাক করুন",
+    "categoryBreakdownDesc": "ক্যাটাগরি অনুযায়ী বিবরণ",
+    "topCategoriesDesc": "আপনার সবচেয়ে সক্রিয় ক্যাটাগরি"
   },
   "settings": {
     "title": "সেটিংস",

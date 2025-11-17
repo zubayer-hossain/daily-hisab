@@ -79,15 +79,15 @@ export function ReportFilters({ filters, categories, onFilterChange, onExport }:
   const hasActiveFilters = localFilters.categoryId || localFilters.type || localFilters.period !== 'thisMonth';
 
   return (
-    <Card className="p-3 md:p-4">
-      <div className="space-y-3">
-        {/* Filters */}
-        <div className="space-y-3">
+    <Card>
+      <div className="p-4 space-y-4">
+        {/* Filters Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Period Filter */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('reports.selectPeriod')}</label>
+            <label className="text-xs font-medium text-muted-foreground">{t('reports.selectPeriod')}</label>
             <Select value={localFilters.period} onValueChange={handlePeriodChange}>
-              <SelectTrigger className="h-10">
+              <SelectTrigger className="h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -102,12 +102,12 @@ export function ReportFilters({ filters, categories, onFilterChange, onExport }:
 
           {/* Transaction Type Filter */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('reports.selectType')}</label>
+            <label className="text-xs font-medium text-muted-foreground">{t('reports.selectType')}</label>
             <Select 
               value={localFilters.type || 'all'} 
               onValueChange={(value) => setLocalFilters({ ...localFilters, type: value === 'all' ? '' : value as 'INCOME' | 'EXPENSE' })}
             >
-              <SelectTrigger className="h-10">
+              <SelectTrigger className="h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -120,12 +120,12 @@ export function ReportFilters({ filters, categories, onFilterChange, onExport }:
 
           {/* Category Filter */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('reports.selectCategory')}</label>
+            <label className="text-xs font-medium text-muted-foreground">{t('reports.selectCategory')}</label>
             <Select 
               value={localFilters.categoryId || 'all'} 
               onValueChange={(value) => setLocalFilters({ ...localFilters, categoryId: value === 'all' ? undefined : value })}
             >
-              <SelectTrigger className="h-10">
+              <SelectTrigger className="h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -140,30 +140,17 @@ export function ReportFilters({ filters, categories, onFilterChange, onExport }:
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-2">
-          <Button onClick={handleApplyFilters} className="flex-1 h-11">
-            <Filter className="h-4 w-4 mr-2" />
-            {t('reports.applyFilters')}
-          </Button>
-          {hasActiveFilters && (
-            <Button onClick={handleClearFilters} variant="outline" size="icon" className="h-11 w-11 shrink-0">
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-
         {/* Custom Date Range */}
         {showCustomDate && (
-          <div className="space-y-3 pt-3 border-t">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t('reports.from')}</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('reports.from')}</label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      'w-full justify-start text-left font-normal h-10',
+                      'w-full justify-start text-left font-normal h-9',
                       !localFilters.customStartDate && 'text-muted-foreground'
                     )}
                   >
@@ -187,13 +174,13 @@ export function ReportFilters({ filters, categories, onFilterChange, onExport }:
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t('reports.to')}</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('reports.to')}</label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      'w-full justify-start text-left font-normal h-10',
+                      'w-full justify-start text-left font-normal h-9',
                       !localFilters.customEndDate && 'text-muted-foreground'
                     )}
                   >
@@ -218,16 +205,31 @@ export function ReportFilters({ filters, categories, onFilterChange, onExport }:
           </div>
         )}
 
-        {/* Export Buttons */}
-        <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t">
-          <Button onClick={() => onExport('csv')} variant="outline" className="flex-1 h-10">
-            <Download className="h-4 w-4 mr-2" />
-            {t('reports.exportCSV')}
-          </Button>
-          <Button onClick={() => onExport('pdf')} variant="outline" className="flex-1 h-10">
-            <Download className="h-4 w-4 mr-2" />
-            {t('reports.exportPDF')}
-          </Button>
+        {/* Action Buttons */}
+        <div className="space-y-2 pt-2 border-t">
+          {/* Filter Buttons */}
+          <div className="flex gap-2">
+            <Button onClick={handleApplyFilters} className="flex-1 h-9">
+              <Filter className="h-4 w-4 mr-2" />
+              {t('reports.applyFilters')}
+            </Button>
+            {hasActiveFilters && (
+              <Button onClick={handleClearFilters} variant="outline" size="icon" className="h-9 w-9 shrink-0">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          {/* Export Buttons - Separate line on mobile, inline on desktop */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={() => onExport('csv')} variant="outline" className="flex-1 h-9">
+              <Download className="h-4 w-4 mr-2" />
+              {t('reports.exportCSV')}
+            </Button>
+            <Button onClick={() => onExport('pdf')} variant="outline" className="flex-1 h-9">
+              <Download className="h-4 w-4 mr-2" />
+              {t('reports.exportPDF')}
+            </Button>
+          </div>
         </div>
       </div>
     </Card>

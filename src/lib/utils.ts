@@ -57,6 +57,22 @@ export function toBanglaNumber(num: number | string): string {
 }
 
 /**
+ * Convert Bangla numerals to English numerals
+ */
+export function toEnglishNumber(text: string): string {
+  const banglaDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  
+  return text
+    .split('')
+    .map((char) => {
+      const index = banglaDigits.indexOf(char);
+      return index !== -1 ? englishDigits[index] : char;
+    })
+    .join('');
+}
+
+      /**
  * Format number with commas
  */
 export function formatNumber(num: number, locale: string = 'en-US'): string {
@@ -132,4 +148,3 @@ export function debounce<T extends (...args: any[]) => any>(
     timeoutId = setTimeout(() => func(...args), delay);
   };
 }
-

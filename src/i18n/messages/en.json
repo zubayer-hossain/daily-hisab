@@ -155,7 +155,14 @@
     "exportPDF": "Export PDF",
     "generating": "Generating...",
     "exportSuccess": "Report exported successfully",
-    "exportFailed": "Failed to export report"
+    "exportFailed": "Failed to export report",
+    "savingsRate": "Savings Rate",
+    "avgTransaction": "Avg Transaction",
+    "expenseRatio": "Expense Ratio",
+    "incomeVsExpenseDesc": "Overview of your income and expenses",
+    "monthlyTrendDesc": "Track your financial trends over time",
+    "categoryBreakdownDesc": "Breakdown by categories",
+    "topCategoriesDesc": "Your most active categories"
   },
   "settings": {
     "title": "Settings",

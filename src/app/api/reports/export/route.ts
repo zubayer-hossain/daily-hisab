@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db/supabase';
 import { format, parseISO } from 'date-fns';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,10 +26,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch transactions
+    const parsedStartDate = parseISO(startDate);
+    const parsedEndDate = parseISO(endDate);
+
     const transactions = await db.getTransactions(session.user.id, {
-      startDate: parseISO(startDate),
-      endDate: parseISO(endDate),
+      startDate: parsedStartDate,
+      endDate: parsedEndDate,
       ...(categoryId && { categoryId }),
       ...(type && { type }),
     });
@@ -36,7 +39,7 @@ export async function GET(request: NextRequest) {
     if (exportFormat === 'csv') {
       return exportCSV(transactions);
     } else if (exportFormat === 'pdf') {
-      return exportPDF(transactions);
+      return await exportPDF(transactions, parsedStartDate, parsedEndDate);
     }
 
     return NextResponse.json({ error: 'Invalid export format' }, { status: 400 });
@@ -60,7 +63,7 @@ function exportCSV(transactions: any[]) {
       transaction.type,
       transaction.category?.name || 'Unknown',
       transaction.amount,
-      `"${(transaction.description || '').replace(/"/g, '""')}"`, // Escape quotes
+      `"${(transaction.description || '').replace(/"/g, '""')}"`,
     ];
     csvRows.push(row.join(','));
   });
@@ -77,147 +80,136 @@ function exportCSV(transactions: any[]) {
   });
 }
 
-function exportPDF(transactions: any[]) {
-  // For PDF export, we'll create a simple HTML that can be printed as PDF
-  // In production, you might want to use a library like pdf-lib or puppeteer
-  
-  const totalIncome = transactions
-    .filter((t) => t.type === 'INCOME')
-    .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
+async function exportPDF(transactions: any[], startDate: Date, endDate: Date) {
+  try {
+    // Calculate totals
+    const totalIncome = transactions
+      .filter((t) => t.type === 'INCOME')
+      .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
 
-  const totalExpense = transactions
-    .filter((t) => t.type === 'EXPENSE')
-    .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
+    const totalExpense = transactions
+      .filter((t) => t.type === 'EXPENSE')
+      .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
 
-  const balance = totalIncome - totalExpense;
+    const balance = totalIncome - totalExpense;
 
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Transaction Report</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          margin: 40px;
-        }
-        h1 {
-          color: #333;
-        }
-        .summary {
-          margin: 20px 0;
-          padding: 20px;
-          background: #f5f5f5;
-          border-radius: 5px;
-        }
-        .summary-item {
-          display: flex;
-          justify-content: space-between;
-          margin: 10px 0;
-          font-size: 16px;
-        }
-        .summary-label {
-          font-weight: bold;
-        }
-        .income {
-          color: #10b981;
-        }
-        .expense {
-          color: #ef4444;
-        }
-        .balance {
-          color: #3b82f6;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-        th, td {
-          border: 1px solid #ddd;
-          padding: 12px;
-          text-align: left;
-        }
-        th {
-          background-color: #333;
-          color: white;
-        }
-        tr:nth-child(even) {
-          background-color: #f9f9f9;
-        }
-        .print-date {
-          color: #666;
-          font-size: 14px;
-          margin-top: 20px;
-        }
-      </style>
-    </head>
-    <body>
-      <h1>Transaction Report</h1>
-      <div class="print-date">Generated on: ${format(new Date(), 'PPpp')}</div>
+    // Create PDF
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage();
+    const { height } = page.getSize();
+    
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    let y = height - 50;
+
+    // Title
+    page.drawText('Financial Report', {
+      x: 50,
+      y,
+      size: 24,
+      font: boldFont,
+      color: rgb(0, 0, 0),
+    });
+    y -= 40;
+
+    // Date range
+    page.drawText(`Period: ${format(startDate, 'MMM dd, yyyy')} - ${format(endDate, 'MMM dd, yyyy')}`, {
+      x: 50,
+      y,
+      size: 12,
+      font,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    y -= 40;
+
+    // Summary
+    page.drawText('Summary', {
+      x: 50,
+      y,
+      size: 16,
+      font: boldFont,
+      color: rgb(0, 0, 0),
+    });
+    y -= 25;
+
+    page.drawText(`Total Income: $${totalIncome.toFixed(2)}`, {
+      x: 50,
+      y,
+      size: 12,
+      font,
+      color: rgb(0, 0.5, 0),
+    });
+    y -= 20;
+
+    page.drawText(`Total Expense: $${totalExpense.toFixed(2)}`, {
+      x: 50,
+      y,
+      size: 12,
+      font,
+      color: rgb(0.8, 0, 0),
+    });
+    y -= 20;
+
+    page.drawText(`Balance: $${balance.toFixed(2)}`, {
+      x: 50,
+      y,
+      size: 12,
+      font: boldFont,
+      color: balance >= 0 ? rgb(0, 0.5, 0) : rgb(0.8, 0, 0),
+    });
+    y -= 30;
+
+    // Transactions
+    page.drawText(`Transactions (${transactions.length})`, {
+      x: 50,
+      y,
+      size: 16,
+      font: boldFont,
+      color: rgb(0, 0, 0),
+    });
+    y -= 25;
+
+    // Show first 10 transactions
+    const displayTx = transactions.slice(0, 10);
+    displayTx.forEach((tx) => {
+      if (y < 100) return; // Stop if we run out of space
       
-      <div class="summary">
-        <h2>Summary</h2>
-        <div class="summary-item">
-          <span class="summary-label">Total Income:</span>
-          <span class="income">৳${totalIncome.toFixed(2)}</span>
-        </div>
-        <div class="summary-item">
-          <span class="summary-label">Total Expense:</span>
-          <span class="expense">৳${totalExpense.toFixed(2)}</span>
-        </div>
-        <div class="summary-item">
-          <span class="summary-label">Balance:</span>
-          <span class="balance">৳${balance.toFixed(2)}</span>
-        </div>
-        <div class="summary-item">
-          <span class="summary-label">Total Transactions:</span>
-          <span>${transactions.length}</span>
-        </div>
-      </div>
+      const txText = `${format(new Date(tx.date), 'MMM dd')} - ${tx.category?.name || 'N/A'} - $${parseFloat(tx.amount).toFixed(2)} (${tx.type})`;
+      page.drawText(txText, {
+        x: 50,
+        y,
+        size: 10,
+        font,
+        color: rgb(0, 0, 0),
+      });
+      y -= 18;
+    });
 
-      <h2>Transactions</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Type</th>
-            <th>Category</th>
-            <th>Amount</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${transactions
-            .map(
-              (t) => `
-            <tr>
-              <td>${format(new Date(t.date), 'yyyy-MM-dd')}</td>
-              <td>${t.time || ''}</td>
-              <td class="${t.type.toLowerCase()}">${t.type}</td>
-              <td>${t.category?.name || 'Unknown'}</td>
-              <td>৳${parseFloat(t.amount.toString()).toFixed(2)}</td>
-              <td>${t.description || ''}</td>
-            </tr>
-          `
-            )
-            .join('')}
-        </tbody>
-      </table>
-    </body>
-    </html>
-  `;
+    if (transactions.length > 10) {
+      y -= 5;
+      page.drawText(`...and ${transactions.length - 10} more`, {
+        x: 50,
+        y,
+        size: 9,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+    }
 
-  const filename = `report-${format(new Date(), 'yyyy-MM-dd')}.html`;
+    // Generate PDF
+    const pdfBytes = await pdfDoc.save();
+    const filename = `report-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
 
-  return new NextResponse(html, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html',
-      'Content-Disposition': `attachment; filename="${filename}"`,
-    },
-  });
+    return new NextResponse(Buffer.from(pdfBytes), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    });
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    throw error;
+  }
 }
-
